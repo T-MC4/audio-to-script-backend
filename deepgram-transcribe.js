@@ -40,7 +40,7 @@ export async function transcribeDiarizedAudio(fileNameWithExtension) {
 	// Save the transcript
 	const fileNameWithoutExtension = path.parse(fileNameWithExtension).name;
 	fs.writeFileSync(
-		`./transcripts/${fileNameWithoutExtension}.json`,
+		`./transcripts/original-json/${fileNameWithoutExtension}.json`,
 		JSON.stringify(data, null, 2)
 	);
 

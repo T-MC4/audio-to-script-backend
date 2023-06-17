@@ -1,17 +1,19 @@
 // API Data
-const OPENAI_API_KEY = "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";
+const OPENAI_API_KEY = "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";
 
 import path from "path";
 import fs from "fs/promises";
 //// CREATING CHAT PROMPT TEMPLATES & MANAGING PROMPTS FOR CHAT MODELS ////
 import { ChatOpenAI } from "langchain/chat_models/openai";
-import { LLMChain } from "langchain/chains";
+import { LLMChain, ConversationChain } from "langchain/chains";
+import { BufferMemory } from "langchain/memory";
 // REMOVE SPEAKER ALGORITHMICALLY INSTEAD OF VIA GPT-4 PROMPT
-import { removeSpeaker } from "./utils/removeSpeaker.js";
+import { generateSingleSpeakerJsonAndTextFiles } from "./utils/createTextAndSingleSpeakerFiles.js";
 // USE PROMPTS TO GENERATE SCRIPTS
 import {
 	transcriptToScriptPrompt,
 	transcriptToScriptPromptSalesRepOnly,
+	statefulChatPrompt,
 	removeSpeakerTemplate,
 } from "./utils/promptTemplates.js";
 
@@ -22,26 +24,41 @@ import {
 
 export async function completePrompt(
 	fileName,
-	removeSpeakerFirstBoolean = false
+	useSingleSpeakerText = false,
+	useContinue = false
 ) {
-	// Default to grab file from the /transcripts folder
-	let filePath = `./transcripts/${fileName}`;
-	// Set the Default prompt to use
-	let prompt = transcriptToScriptPrompt;
-
-	// REMOVE SPEAKER ALGORITHMICALLY instead of via GPT-4 ?
-	if (removeSpeakerFirstBoolean === true) {
+	// TURN JSON ARRAY OF SPEAKER OBJECTS (multiple speakers) INTO A TEXT FILE (of multiple speakers)
+	// AND ALSO INTO SINGLE-SPEAKER JSON / TEXT FILES
+	try {
 		// We will use a text splitter; to maximize it, determine
 		// the maxTokens the removeSpeaker prompt can fit
 		const maxTokens = 32768 - approximateTokens(removeSpeakerTemplate) - 500;
 
 		// Remove the prospect and sets the text splitter to maxTokens
-		console.log("removing speaker");
-		await removeSpeaker(fileName, removeSpeakerTemplate, maxTokens);
-		console.log("removing speaker COMPLETE");
+		console.log("Generating text file and single-speaker text/json files");
+		await generateSingleSpeakerJsonAndTextFiles(
+			fileName,
+			removeSpeakerTemplate,
+			maxTokens,
+			"Rep"
+		);
+		console.log(
+			"Generating text file and single-speaker text/json files COMPLETE"
+		);
+	} catch (err) {
+		console.log(
+			`Error Generating text file and/or single-speaker text/json files: ${err}`
+		);
+	}
 
-		// re-set the file path to the new transcript
-		filePath = `./scripts/working/${fileName}`;
+	// Default grabbing the file from the /transcripts/original-text folder
+	let filePath = `./transcripts/original-text/${fileName}`;
+	// Set the Default prompt to use
+	let prompt = transcriptToScriptPrompt;
+
+	if (useSingleSpeakerText === true) {
+		// re-set the file path to the single-speaker transcript
+		filePath = `./scripts/single-speaker-text/${fileName}`;
 		// change to a prompt that can handle 1 speaker
 		prompt = transcriptToScriptPromptSalesRepOnly;
 	}
@@ -49,35 +66,116 @@ export async function completePrompt(
 	// Read the transcript contents from the file
 	const repTranscript = await fs.readFile(filePath, "utf-8");
 
-	// Guess the maxTokens left available for the completion
-	// NOTE: the guess isn't 100% so the default hedge / buffer is
-	// -1,500 unless set manually as 3rd argument of countTokens()
-	const maxTokens = countTokens(repTranscript, prompt);
-
 	// START TIMER
 	const start = performance.now();
 	console.time("Create Script");
 
-	// Create chain and set LLM options
-	const chain = new LLMChain({
-		prompt: prompt,
-		llm: new ChatOpenAI({
-			openAIApiKey: OPENAI_API_KEY,
-			modelName: "gpt-4-32k-0613",
-			temperature: 0,
-			maxTokens: maxTokens,
-		}),
-	});
+	// Guess the maxTokens left available for the completion
+	// NOTE: the guess isn't 100% so set a default hedge / buffer
+	const maxModelTokens = 32768; // Model's maximum context length
+	const spentTokens = countTokens(repTranscript, prompt);
+	const tokenBuffer = 1500;
 
-	// Call the LLM completion
-	const response = await chain.call({
-		transcript: repTranscript,
-	});
+	// Approximate the max avaialble tokens for the LLM generation
+	let maxTokens = maxModelTokens - spentTokens - tokenBuffer;
+	console.log(maxTokens);
+
+	// Continuosly 'press continue' OR generate the script with one call to GPT-4
+	let fullResponse = "";
+	if (useContinue === true) {
+		// Overwrite maxTokens with a default generation size
+		//(every call of 'continue:' will output at this size)
+		maxTokens = 2048;
+
+		// Create chain and set LLM options
+		const chain = new ConversationChain({
+			memory: new BufferMemory({ returnMessages: true, memoryKey: "history" }),
+			prompt: statefulChatPrompt(repTranscript),
+			llm: new ChatOpenAI({
+				openAIApiKey: OPENAI_API_KEY,
+				modelName: "gpt-4-32k-0613",
+				temperature: 0,
+				maxTokens: maxTokens, // SET A PRE-DETERMINED LENGTH BEFORE COMPLETION CUTS OFF
+				streaming: true,
+				callbacks: [
+					{
+						handleLLMNewToken(token) {
+							process.stdout.write(token);
+						},
+					},
+				],
+			}),
+		});
+
+		let scriptDone = false;
+		const responseH = await chain.call({
+			input:
+				"The following is the answer you have written based on this while adhering to all the guidelines I gave you:",
+		});
+		fullResponse += responseH.response;
+
+		if (fullResponse.includes("SCRIPT IS NOW DONE")) {
+			scriptDone = true;
+		}
+
+		for (let i = 0; i < x && !scriptDone; i++) {
+			const responseI = await chain.call({
+				input: "continue:",
+			});
+
+			// If "SCRIPT IS NOW DONE" is in the response, stop the loop.
+			if (responseI.response.includes("SCRIPT IS NOW DONE")) {
+				fullResponse += responseI.response;
+				scriptDone = true;
+			} else {
+				fullResponse += responseI.response;
+			}
+		}
+
+		// specify the number of times you want to click 'continue'
+		// assume that the script outputted is half the length transcript
+		// then divide that length by the # of tokens that fit per chain call
+		// let x = Math.ceil(spentTokens / 1.5 / maxTokens);
+		// console.log(x);
+		// for (let i = 0; i < x; i++) {
+		// 	const responseI = await chain.call({
+		// 		input: "continue:",
+		// 	});
+		// 	// console.log(responseI.response);
+		// 	fullResponse += responseI.response;
+		// }
+	} else {
+		// Create chain and set LLM options
+		const chain = new LLMChain({
+			prompt: prompt,
+			llm: new ChatOpenAI({
+				openAIApiKey: OPENAI_API_KEY,
+				modelName: "gpt-4-32k-0613",
+				temperature: 0,
+				maxTokens: maxTokens,
+				streaming: true,
+				callbacks: [
+					{
+						handleLLMNewToken(token) {
+							process.stdout.write(token);
+						},
+					},
+				],
+			}),
+		});
+
+		// Call the LLM completion
+		const response = await chain.call({
+			transcript: repTranscript,
+		});
+		fullResponse += response.text;
+		// console.log(response.text);
+	}
 
 	// Save the generated script to a file for review
 	await fs.writeFile(
 		`./scripts/${path.parse(fileName).name}.txt`,
-		response.text
+		fullResponse
 	);
 
 	// END TIMER
@@ -85,16 +183,20 @@ export async function completePrompt(
 	console.timeEnd("Create Script");
 
 	// Return the generated script
-	return response.text;
+	return fullResponse;
 }
 
+//--------------------------------------------------------
+// TURN CHARACTERS INTO TOKEN EQUIVALENT
 function approximateTokens(text) {
 	const totalChars = text.length;
 	const approxTokens = Math.ceil(totalChars / 4);
 	return approxTokens;
 }
 
-function countTokens(transcriptContents, promptTemplate, tokenBuffer = 1500) {
+//--------------------------------------------------------
+// GET TOKEN COUNT FOR PROMPTS/TRANSCRIPTS AND THEN DEDUCE WHAT IS LEFT OVER FOR THE RESPONSE
+function countTokens(transcriptContents, promptTemplate) {
 	// Count the number of tokens in the transcript
 	const transcriptTokens = approximateTokens(transcriptContents); // Rough approximation
 
@@ -114,11 +216,8 @@ function countTokens(transcriptContents, promptTemplate, tokenBuffer = 1500) {
 	// SUM prompt tokens
 	const totalPromptTokens = promptTokens1 + promptTokens2;
 
-	// SUBTRACT the SUM of prompt + transcript tokens from MAX MODEL tokens
-	const maxModelTokens = 32768; // Model's maximum context length
-	const maxTokens =
-		maxModelTokens - transcriptTokens - totalPromptTokens - tokenBuffer;
+	// SUM of prompt + transcript tokens
+	const spentTokens = transcriptTokens + totalPromptTokens;
 
-	console.log(maxTokens);
-	return maxTokens;
+	return spentTokens;
 }
