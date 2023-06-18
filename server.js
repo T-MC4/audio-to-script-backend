@@ -1,5 +1,5 @@
-import { transcribeDiarizedAudio } from './deepgram-transcribe.js';
-import { completePrompt } from './generate-script.js';
+import { transcribeDiarizedAudio } from './utils/deepgram-transcribe.js';
+import { completePrompt } from './utils/generate-script.js';
 import { upload } from './utils/storage.js';
 import express from 'express';
 import cors from 'cors';

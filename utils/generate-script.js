@@ -10,7 +10,7 @@ import { ChatOpenAI } from 'langchain/chat_models/openai';
 import { LLMChain, ConversationChain } from 'langchain/chains';
 import { BufferMemory } from 'langchain/memory';
 // REMOVE SPEAKER ALGORITHMICALLY INSTEAD OF VIA GPT-4 PROMPT
-import { generateSingleSpeakerJsonAndTextFiles } from './utils/createTextAndSingleSpeakerFiles.js';
+import { generateSingleSpeakerJsonAndTextFiles } from './createTextAndSingleSpeakerFiles.js';
 // USE PROMPTS TO GENERATE SCRIPTS
 import {
     transcriptToScriptPrompt,
@@ -18,7 +18,7 @@ import {
     statefulChatPrompt,
     statefulSettingChatPrompt,
     removeSpeakerTemplate,
-} from './utils/promptTemplates.js';
+} from './promptTemplates.js';
 
 // Rather than update the Prompt Template THEN call the model...
 // Instead create a Chain, and call it with an input
