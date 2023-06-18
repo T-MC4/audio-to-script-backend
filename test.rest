@@ -1,5 +1,5 @@
 # @name uploadRecord
-POST http://localhost:3000/api/upload_record
+POST https://audio-to-script-backend-production.up.railway.app/api/upload_record
 Content-Type: multipart/form-data; boundary=Boundary
 
 --Boundary

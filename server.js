@@ -52,6 +52,8 @@ app.post('/api/get_script', async (req, res) => {
     );
 });
 
+app.listen(3000, () => console.log('Server is running'));
+
 // app.post('/api/get_reformatted_script', async (req, res) => {
 //     const prompt =
 //         'Write summary of following conversation:\n' + req.body.transcript;
@@ -62,5 +64,3 @@ app.post('/api/get_script', async (req, res) => {
 //     });
 //     res.send(reformattedScript.choices[0].text);
 // });
-
-app.listen(3000, () => console.log('Server is running'));
