@@ -1,0 +1,35 @@
+# @name uploadRecord
+POST http://localhost:3000/api/upload_record
+Content-Type: multipart/form-data; boundary=Boundary
+
+--Boundary
+Content-Disposition: form-data; name="record"; filename="Daniel-10min-call.mp3"
+Content-Type: audio/wav
+
+< ./upload/Daniel-10min-call.mp3
+--Boundary--
+
+###
+# @name getTranscript
+POST http://localhost:3000/api/get_transcript
+Content-Type: application/json
+
+{
+    "file_name": "{{uploadRecord.response.body.file_name}}"
+}
+
+###
+# @name getScript
+POST http://localhost:3000/api/get_script
+Content-Type: application/json
+
+{
+    "fileName": "{{uploadRecord.response.body.file_name}}",
+    "setOrCloseCall": "close",
+    "generateSingleSpeakerFiles": true,
+    "useSingleSpeakerText": true,
+    "useContinue": true
+}
+
+###
+GET http://localhost:3000/status
