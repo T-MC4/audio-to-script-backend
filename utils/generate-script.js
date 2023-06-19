@@ -10,7 +10,7 @@ import { ChatOpenAI } from 'langchain/chat_models/openai';
 import { LLMChain, ConversationChain } from 'langchain/chains';
 import { BufferMemory } from 'langchain/memory';
 // REMOVE SPEAKER ALGORITHMICALLY INSTEAD OF VIA GPT-4 PROMPT
-import { generateSingleSpeakerJsonAndTextFiles } from './createTextAndSingleSpeakerFiles.js';
+import { generateSingleSpeakerJsonAndTextFiles } from './generate-rep-only.js';
 // USE PROMPTS TO GENERATE SCRIPTS
 import {
     transcriptToScriptPrompt,
@@ -19,6 +19,7 @@ import {
     statefulSettingChatPrompt,
     removeSpeakerTemplate,
 } from './promptTemplates.js';
+import { spentTokens } from './countTokens.js';
 
 // Rather than update the Prompt Template THEN call the model...
 // Instead create a Chain, and call it with an input
@@ -38,11 +39,10 @@ export async function completePrompt(
     // AND ALSO INTO SINGLE-SPEAKER JSON / TEXT FILES
     if (generateSingleSpeakerFiles === true) {
         try {
-            // Remove the prospect and sets the text splitter to maxTokens
+            // Remove the prospect
             await generateSingleSpeakerJsonAndTextFiles(
                 fileName,
                 removeSpeakerTemplate,
-                5000,
                 'Rep'
             );
         } catch (err) {
@@ -54,7 +54,7 @@ export async function completePrompt(
 
     const fileNameWithoutExtension = path.parse(fileName).name;
     // Default grabbing the file from the /transcripts/original-text folder
-    let filePath = `./transcripts/original-text/${fileNameWithoutExtension}.txt`;
+    let filePath = `./transcripts/two-speakers-text/${fileNameWithoutExtension}.txt`;
     // Set the Default prompt to use
     let prompt = transcriptToScriptPrompt;
 
@@ -75,11 +75,11 @@ export async function completePrompt(
     // Guess the maxTokens left available for the completion
     // NOTE: the guess isn't 100% so set a default hedge / buffer
     const maxModelTokens = 32768; // Model's maximum context length
-    const spentTokens = countTokens(repTranscript, prompt);
+    const usedTokens = spentTokens(repTranscript, prompt);
     const tokenBuffer = 1500;
 
     // Approximate the max avaialble tokens for the LLM generation
-    let maxTokens = maxModelTokens - spentTokens - tokenBuffer;
+    let maxTokens = maxModelTokens - usedTokens - tokenBuffer;
     console.log(maxTokens);
 
     // THE SCRIPT WILL GET PUSHED HERE
@@ -89,7 +89,7 @@ export async function completePrompt(
     if (useContinue === true) {
         // Overwrite maxTokens with a default generation size
         //(every call of 'continue:' will output at this size)
-        maxTokens = 2048;
+        // maxTokens = 2048;
 
         // Create chain and set LLM options
         const chain = new ConversationChain({
@@ -119,7 +119,7 @@ export async function completePrompt(
         });
 
         // SET A MAX NUMBER OF TIMES TO SEND 'continue: '
-        let x = Math.ceil(spentTokens / 2048);
+        let x = Math.ceil(usedTokens / 2048);
         console.log(`The Max Number of 'continue:' attempts will be: ${x}`);
 
         let scriptDone = false;
@@ -127,7 +127,6 @@ export async function completePrompt(
         const responseH = await chain.call({
             input: 'The following is the answer you have written based on this while adhering to all the guidelines I gave you:',
         });
-        dataCallback(responseH.response);
         fullResponse += responseH.response;
 
         // CHECK TO SEE IF THE SCRIPT COMPLETED IN THE FIRST GENERATION
@@ -143,11 +142,9 @@ export async function completePrompt(
 
             // If "SCRIPT IS NOW DONE" is in the response, stop the loop.
             if (responseI.response.includes('SCRIPT IS NOW DONE')) {
-                dataCallback(responseI.response);
                 fullResponse += responseI.response;
                 scriptDone = true;
             } else {
-                dataCallback(responseI.response);
                 fullResponse += responseI.response;
             }
         }
@@ -175,9 +172,7 @@ export async function completePrompt(
         const response = await chain.call({
             transcript: repTranscript,
         });
-        dataCallback(response.response);
-        // fullResponse += response.text;
-        // console.log(response.text);
+        fullResponse += response.text;
     }
 
     // Save the generated script to a file for review
@@ -196,40 +191,4 @@ export async function completePrompt(
 
     // Return the generated script
     // return fullResponse;
-}
-
-//--------------------------------------------------------
-// TURN CHARACTERS INTO TOKEN EQUIVALENT
-function approximateTokens(text) {
-    const totalChars = text.length;
-    const approxTokens = Math.ceil(totalChars / 4);
-    return approxTokens;
-}
-
-//--------------------------------------------------------
-// GET TOKEN COUNT FOR PROMPTS/TRANSCRIPTS AND THEN DEDUCE WHAT IS LEFT OVER FOR THE RESPONSE
-function countTokens(transcriptContents, promptTemplate) {
-    // Count the number of tokens in the transcript
-    const transcriptTokens = approximateTokens(transcriptContents); // Rough approximation
-
-    // COUNT TOKENS
-
-    // Get the text from transcriptToScriptPromptSalesRepOnly
-    const promptText1 = promptTemplate.promptMessages[0].prompt.template;
-    const promptText2 = promptTemplate.promptMessages[1].prompt.template;
-
-    console.log(promptText1);
-    console.log(promptText2);
-
-    // Count tokens in the prompt
-    const promptTokens1 = approximateTokens(promptText1); // Rough approximation
-    const promptTokens2 = approximateTokens(promptText2); // Rough approximation
-
-    // SUM prompt tokens
-    const totalPromptTokens = promptTokens1 + promptTokens2;
-
-    // SUM of prompt + transcript tokens
-    const spentTokens = transcriptTokens + totalPromptTokens;
-
-    return spentTokens;
 }

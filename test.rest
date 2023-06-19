@@ -5,10 +5,10 @@ POST http://localhost:3000/api/upload_record
 Content-Type: multipart/form-data; boundary=Boundary
 
 --Boundary
-Content-Disposition: form-data; name="record"; filename="Daniel-10min-call.mp3"
+Content-Disposition: form-data; name="record"; filename="sam-fowler-air.mp3"
 Content-Type: audio/wav
 
-< ./upload/Daniel-10min-call.mp3
+< ./upload/sam-fowler-air.mp3
 --Boundary--
 
 ###
@@ -22,16 +22,9 @@ Content-Type: application/json
 
 ###
 # @name getScript
-POST http://localhost:3000/api/get_script
+GET  http://localhost:3000/api/get_script?fileName=rvq55fqv.json
+# {{uploadRecord.response.body.file_name}}
 Content-Type: application/json
-
-{
-    "fileName": "{{uploadRecord.response.body.file_name}}",
-    "setOrCloseCall": "close",
-    "generateSingleSpeakerFiles": true,
-    "useSingleSpeakerText": true,
-    "useContinue": true
-}
 
 ###
 GET http://localhost:3000/status

@@ -5,11 +5,11 @@ import {
     MessagesPlaceholder,
 } from 'langchain/prompts';
 
-export const removeSpeakerTemplate = `There are two primary speakers in the array below: Speaker A and Speaker B.
+export const removeSpeakerTemplate = `There are two primary speakers in the array below: Speaker 0 and Speaker 1 (or Speaker 1 and Speaker 2)
 
 One of these Speakers is a sales rep and the other is a prospect. The sales rep is the one who introduces themselves as someone from Air Ai and/or states that the call is being recorded for quality assurance and/or talks about clients they've helped or businesses they've scaled and/or offers a consulting call and offers time to book a call.
 
-Analyze the transcript and determine which speaker is the sales rep. Once you have the answer, just state "0" or "1" with no quotation marks:
+Analyze the transcript and determine which speaker is the sales rep. Once you have the answer, just state "0" or "1" or "2" or "3" with no quotation marks:
 
 {transcript}`;
 

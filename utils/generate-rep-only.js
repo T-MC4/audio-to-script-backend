@@ -1,17 +1,20 @@
+import fs from 'fs/promises';
+import path from 'path';
 import { OpenAI } from 'langchain/llms/openai';
 import { PromptTemplate } from 'langchain/prompts';
 import { LLMChain } from 'langchain/chains';
-import fs from 'fs/promises';
-import path from 'path';
-
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+import { normalizeSpeakers } from './normalize-speakers.js';
+import { approximateTokens } from './countTokens.js';
+import {
+    processTranscriptAndReturnTrueIfNotEmpty,
+    splitTranscript,
+} from './helpers.js';
 
 // GRAB THE FILE TO BE CHANGED, CHECK THAT IT ISN'T EMPTY,
 // REMOVE THE SPEAKER(s) NOT WANTED, SAVE THE NEW JSON
 export const generateSingleSpeakerJsonAndTextFiles = async (
     fileName,
     prompt,
-    maxTokens,
     speakerLabel
 ) => {
     const fileNameWithoutExtension = path.parse(fileName).name;
@@ -22,9 +25,22 @@ export const generateSingleSpeakerJsonAndTextFiles = async (
             // Get the transcript contents
             const content = await fs.readFile(filePath, 'utf-8');
 
+            // Normalize the content
+            const normalizedContent = await normalizeSpeakers(
+                JSON.parse(content)
+            );
+            await fs.writeFile(
+                `./transcripts/normalized-json/${fileNameWithoutExtension}.json`,
+                JSON.stringify(normalizedContent)
+            );
+
             // remove the unwanted speaker(s) & only keep 1 speaker
             const { oneSpeakerJson, oneSpeakerText, allSpeakersText } =
-                await speakerChain(content, prompt, maxTokens, speakerLabel);
+                await generateSingleSpeakerFiles(
+                    JSON.stringify(normalizedContent),
+                    prompt,
+                    speakerLabel
+                );
 
             // LOG THE RESULTING TRANSCRIPTS
             console.log(oneSpeakerJson, oneSpeakerText, allSpeakersText);
@@ -42,7 +58,7 @@ export const generateSingleSpeakerJsonAndTextFiles = async (
                 oneSpeakerText
             );
             await fs.writeFile(
-                `./transcripts/original-text/${fileNameWithoutExtension}.txt`,
+                `./transcripts/two-speakers-text/${fileNameWithoutExtension}.txt`,
                 allSpeakersText
             );
 
@@ -58,21 +74,28 @@ export const generateSingleSpeakerJsonAndTextFiles = async (
     }
 };
 
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+
 // TURN A JSON ARRAY INTO A SPEAKER-LABELED TEXT TRANSCRIPT.
 // ADDITIONALLY, USE AI TO DETERMINE WHICH SPEAKER IS THE ONE TO KEEP,
 // THEN RETURN A JSON & A TEXT FILE WITH ONLY THAT SPEAKER
-async function speakerChain(
+async function generateSingleSpeakerFiles(
     transcript,
     promptTemplate,
-    maxTokens,
     speakerLabel
 ) {
+    // ONE chunk will be used to determined the rep - Deduce how big the chunk can be
+    const spentTokens = approximateTokens(promptTemplate);
+    const maxTokens = 32768;
+    const tokensForResponse = 2000;
+    const maxFirstChunkSize = maxTokens - spentTokens - tokensForResponse; // Buffer/hedge
+
     // Initiate an LLM instance and set the options
     const model = new OpenAI({
         openAIApiKey: OPENAI_API_KEY,
         modelName: 'gpt-4-32k',
         temperature: 0,
-        maxTokens: maxTokens,
+        maxTokens: tokensForResponse,
     });
 
     // Create an LLM/Prompt chain
@@ -87,8 +110,7 @@ async function speakerChain(
     // TURN THE TRANSCRIPT ARRAY INTO AN ARRAY OF SMALLER ARRAYS (chunks)
     // Make the chunks small enough to fit into the LLM call, rather than
     // injecting the whole trancript
-    const chunks = splitTranscript(transcript, maxTokens);
-    console.log(chunks);
+    const chunks = splitTranscript(transcript, maxFirstChunkSize);
 
     let allSpeakersText = '';
 
@@ -97,14 +119,18 @@ async function speakerChain(
 
     console.log('BEGINNING PROCESSING');
     try {
-        for (const chunk of chunks) {
-            const speakerToKeep = await determineUnwantedSpeakersChain.call({
-                transcript: JSON.stringify(chunk),
-            });
-            console.log(
-                `The speaker that matches '${speakerLabel}' has been determined`
-            );
+        // Only determine the speaker to keep once, on the first chunk
+        const speakerToKeep = await determineUnwantedSpeakersChain.call({
+            transcript: JSON.stringify(chunks[0]),
+        });
 
+        console.log(
+            `The speaker that matches '${speakerLabel}' has been determined: ${Number(
+                speakerToKeep.text
+            )}`
+        );
+
+        for (const chunk of chunks) {
             // PUSH SINGLE SPEAKER TO A JSON ARRAY
             const filteredChunk = chunk.filter(
                 (obj) => obj.speaker === Number(speakerToKeep.text)
@@ -120,12 +146,11 @@ async function speakerChain(
                         : '*WFPTR*';
                 allSpeakersText += `${prefix}\n${item.transcript}\n\n`;
             });
-            console.log('All-Speakers text chunk complete');
+            console.log('Two-Speakers text chunk complete');
         }
 
         // Flatten the array of arrays called 'processedChunks'
         const oneSpeakerJson = [].concat(...processedChunks);
-        // console.log(oneSpeakerJson);
 
         // CONVERT SINGLE SPEAKER JSON INTO A TEXT FILE
         let oneSpeakerText = '';
@@ -143,98 +168,3 @@ async function speakerChain(
         console.log(`Problem with determineUnwantedSpeakerChain(): ${err}`);
     }
 }
-
-// SPLIT THE TRANSCRIPT ARRAY INTO AN ARRAY OF SMALLER ARRAYS
-function splitTranscript(transcriptContent, maxTokens) {
-    console.log(
-        'The typeof the transcript about to be split is: ',
-        typeof transcript
-    );
-    const items = JSON.parse(transcriptContent);
-    const chunks = [];
-    let currentChunk = [];
-
-    for (const item of items) {
-        if (JSON.stringify(currentChunk.concat(item)).length < maxTokens) {
-            currentChunk.push(item);
-        } else {
-            chunks.push(currentChunk);
-            currentChunk = [item];
-        }
-    }
-
-    if (currentChunk.length > 0) {
-        chunks.push(currentChunk);
-    }
-
-    return chunks;
-}
-
-const processTranscriptAndReturnTrueIfNotEmpty = async (filePath) => {
-    console.log(filePath);
-    const rawTranscript = await fs.readFile(filePath, 'utf-8');
-    const transcript = await JSON.parse(rawTranscript);
-    console.log('Transcript Passed Parse Test');
-    console.log(transcript);
-
-    if (rawTranscript.length === 0) {
-        console.log('Transcript Failed Check: Transcript is empty');
-        await moveTranscriptToIssueDetected(filePath);
-        console.log("Transcript Moved to 'issue_detected' folder");
-        return false;
-    } else {
-        try {
-            if (!checkTranscript(transcript)) {
-                console.log(
-                    'WARNING: Transcript is NOT empty but it does have more than 2 speakers'
-                );
-                // await moveTranscriptToIssueDetected(filePath);
-                // console.log("Transcript Moved to 'issue_detected' folder");
-                return true;
-            } else {
-                return true;
-            }
-        } catch (error) {
-            console.log(
-                'Error in processTranscriptAndReturnTrueIfPass: ',
-                error
-            );
-            await moveTranscriptToIssueDetected(filePath);
-            return false;
-        }
-    }
-};
-
-const checkTranscript = (transcript) => {
-    const validSpeakers = [0, 1];
-
-    for (const entry of transcript) {
-        if (!validSpeakers.includes(entry.speaker)) {
-            return false;
-        }
-    }
-
-    return true;
-};
-
-const moveTranscriptToIssueDetected = async (filePath) => {
-    const issueDetectedFolderPath = path.join(
-        './transcripts',
-        'issue_detected'
-    );
-    const destinationPath = path.join(
-        issueDetectedFolderPath,
-        path.basename(filePath)
-    );
-
-    try {
-        await fs.access(issueDetectedFolderPath);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            await fs.mkdir(issueDetectedFolderPath, { recursive: true });
-        } else {
-            throw error;
-        }
-    }
-    await fs.rename(filePath, destinationPath);
-};
