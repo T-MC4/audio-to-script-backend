@@ -111,6 +111,7 @@ export async function completePrompt(
                     {
                         handleLLMNewToken(token) {
                             process.stdout.write(token);
+                            dataCallback(token);
                         },
                     },
                 ],
@@ -185,6 +186,8 @@ export async function completePrompt(
         fullResponse
     );
     // END THE CALLBACK / STREAMING OF THE SCRIPT TO CLIENT
+    // When the script is done, send a final message to the client
+    dataCallback({ done: true });
     endCallback();
 
     // END TIMER

@@ -10,7 +10,9 @@ import fs from 'fs';
 export async function transcribeDiarizedAudio(fileNameWithExtension) {
     try {
         // Set file path
+        console.log('setting file path');
         const filePath = path.join('./upload', fileNameWithExtension);
+        console.log('file path set');
 
         // Set API endpoint and options
         const url =
