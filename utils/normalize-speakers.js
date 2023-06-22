@@ -1,5 +1,5 @@
 import { ChatOpenAI } from 'langchain/chat_models/openai';
-import { HumanChatMessage, SystemChatMessage } from 'langchain/schema';
+import { HumanChatMessage } from 'langchain/schema';
 import fs from 'fs/promises';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;

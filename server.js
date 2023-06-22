@@ -1,4 +1,5 @@
 import { transcribeDiarizedAudio } from './utils/deepgram-transcribe.js';
+import { removeScriptMistakes } from './utils/removeMistakes.js';
 import { completePrompt } from './utils/generate-script.js';
 import { upload } from './utils/storage.js';
 import express from 'express';
@@ -28,30 +29,11 @@ app.post('/api/get_transcript', async (req, res) => {
     res.send(await transcribeDiarizedAudio(req.body.file_name));
 });
 
-// app.post('/api/get_script', async (req, res) => {
-//     // PASS IN FILE NAME + OPTIONAL MODIFIERS
-//     const {
-//         fileName, // STRING
-//         setOrCloseCall, // STRING
-//         generateSingleSpeakerFiles, // BOOLEAN
-//         useSingleSpeakerText, // BOOLEAN
-//         useContinue, // BOOLEAN
-//     } = req.body;
-
-//     // SEND SCRIPT BACK
-//     res.send(
-//         // CREATE A SCRIPT
-//         await completePrompt(
-//             fileName, // The file name of the transcript to inject into the prompt
-//             setOrCloseCall || 'close', // Use either a 'set' or 'close' prompt based on the type of script is needed
-//             generateSingleSpeakerFiles || true, // Generate (or re-write) the single-speaker transcripts for fileName
-//             useSingleSpeakerText || true, // Inject into the prompt the single-speaker transcript instead of the orginal
-//             useContinue || true, // Should the prompt be a chain of 'continue:' calls, or a single big prompt?
-//             (data) => res.write(data), // Callback to send data back to client
-//             () => res.end() // Callback to end the response
-//         )
-//     );
-// });
+app.post('/api/remove_mistakes', async (req, res) => {
+    // PASS IN FILE NAME - SEND BACK DIARIZED AUDIO
+    console.log(req.file_name);
+    res.send(await removeScriptMistakes(req.body.file_name));
+});
 
 app.get('/api/get_script', (req, res) => {
     // Set headers for Server-Sent Events
@@ -61,7 +43,7 @@ app.get('/api/get_script', (req, res) => {
     console.log('Client connected to SSE');
 
     // PASS IN FILE NAME + OPTIONAL MODIFIERS
-    // Call your function and pass in the res object
+    // STREAM THE RESPONSE FROM OPENAI
     completePrompt(
         req.query.fileName, // The file name of the transcript to inject into the prompt
         req.query.setOrCloseCall || 'close', // Use either a 'set' or 'close' prompt based on the type of script is needed
@@ -70,7 +52,7 @@ app.get('/api/get_script', (req, res) => {
         req.query.useContinue || true, // Should the prompt be a chain of 'continue:' calls, or a single big prompt?
         (data) => res.write(`data: ${JSON.stringify(data)}\n\n`), // Send data to client
         () => res.end() // End the response
-    );
+    ).catch((error) => console.log(error));
 });
 
 app.listen(3000, () => console.log('Server is running'));
