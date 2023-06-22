@@ -1,5 +1,5 @@
 import { ChatOpenAI } from 'langchain/chat_models/openai';
-import { approximateTokens } from './countTokens';
+import { approximateTokens } from './countTokens.js';
 import { splitTranscript } from './helpers.js';
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
