@@ -10,21 +10,27 @@ export async function normalizeSpeakers(arr) {
     console.log('nonPrimaryIndexes', nonPrimaryIndexes);
     console.log('primary speakers:', primarySpeakers);
 
-    let determinedSpeakers = await askAI(contexts, primarySpeakers);
-    console.log('AI-determined replacements', determinedSpeakers);
+    if (!nonPrimaryIndexes.length == 0) {
+        let determinedSpeakers = await askAI(contexts, primarySpeakers);
+        console.log('AI-determined replacements', determinedSpeakers);
 
-    let updatedData = updateSpeakers(
-        arr,
-        nonPrimaryIndexes,
-        determinedSpeakers
-    );
-    console.log(updatedData);
-    await fs.writeFile(`./transcripts/test.json`, JSON.stringify(updatedData));
+        let updatedData = updateSpeakers(
+            arr,
+            nonPrimaryIndexes,
+            determinedSpeakers
+        );
+        // console.log(updatedData);
+        await fs.writeFile(
+            `./transcripts/test.json`,
+            JSON.stringify(updatedData)
+        );
+        let combinedData = combineAdjacentSameSpeaker(updatedData);
+        // console.log(combinedData);
 
-    let combinedData = combineAdjacentSameSpeaker(updatedData);
-    // console.log(combinedData);
+        return combinedData;
+    }
 
-    return combinedData;
+    return arr;
 }
 
 function extractContexts(arr) {
