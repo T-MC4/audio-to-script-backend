@@ -70,7 +70,6 @@ export async function completePrompt(
 
     // START TIMER
     const start = performance.now();
-    console.time('Create Script');
 
     // Guess the maxTokens left available for the completion
     // NOTE: the guess isn't 100% so set a default hedge / buffer
@@ -186,8 +185,9 @@ export async function completePrompt(
     endCallback();
 
     // END TIMER
-    console.log(`Script created in ${performance.now() - start} seconds`);
-    console.timeEnd('Create Script');
+    console.log(
+        `Script created in ${(performance.now() - start) / 1000} seconds`
+    );
 
     // Return the generated script
     // return fullResponse;

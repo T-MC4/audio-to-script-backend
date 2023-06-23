@@ -9,6 +9,7 @@ import {
     processTranscriptAndReturnTrueIfNotEmpty,
     splitTranscript,
 } from './helpers.js';
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // GRAB THE FILE TO BE CHANGED, CHECK THAT IT ISN'T EMPTY,
 // REMOVE THE SPEAKER(s) NOT WANTED, SAVE THE NEW JSON
@@ -73,8 +74,6 @@ export const generateSingleSpeakerJsonAndTextFiles = async (
         }
     }
 };
-
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 // TURN A JSON ARRAY INTO A SPEAKER-LABELED TEXT TRANSCRIPT.
 // ADDITIONALLY, USE AI TO DETERMINE WHICH SPEAKER IS THE ONE TO KEEP,
