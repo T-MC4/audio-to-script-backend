@@ -1,7 +1,8 @@
 .DS_Store
 node_modules
 misc
-# transcripts
-# scripts
+transcripts
+scripts
+uploads
 .env
 audio-to-script.js
