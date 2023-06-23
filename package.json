@@ -1,15 +1,14 @@
 {
-    "name": "transcript-to-script-API-server",
+    "name": "audio-to-script-API-server",
     "version": "1.0.0",
-    "description": "Turn transcripts into sales scripts",
+    "description": "Turn audios into sales scripts",
     "main": "server.js",
     "type": "module",
     "scripts": {
         "transcribe": "node dg-transcribe.js",
         "script": "node audio-to-script.js",
-        "start": "node NODE_ENV=production server.js"
+        "start": "NODE_ENV=production node server.js"
     },
-    "license": "ISC",
     "dependencies": {
         "axios": "^1.4.0",
         "cors": "^2.8.5",
