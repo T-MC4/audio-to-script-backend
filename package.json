@@ -7,7 +7,7 @@
     "scripts": {
         "transcribe": "node dg-transcribe.js",
         "script": "node audio-to-script.js",
-        "start": "node server.js"
+        "start": "node NODE_ENV=production server.js"
     },
     "license": "ISC",
     "dependencies": {
