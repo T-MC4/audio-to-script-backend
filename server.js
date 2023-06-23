@@ -5,12 +5,18 @@ import { upload } from './utils/storage.js';
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+dotenv.config();
 
 const app = express();
-
-dotenv.config();
 const port = process.env.PORT || 3000;
-app.use(cors());
+
+// Only allow requests from the specific frontend. If none specified, allow all
+app.use(
+    cors({
+        origin: process.env.ALLOWED_ORIGIN || '*',
+    })
+);
+
 app.use(express.json());
 
 app.get('/status', (req, res) => {
