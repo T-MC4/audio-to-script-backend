@@ -8,22 +8,22 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Add Fetch API polyfill for Node.js
-import fetch, { Headers } from 'node-fetch';
-global.fetch = fetch;
-global.Headers = Headers;
+// import fetch, { Headers } from 'node-fetch';
+// global.fetch = fetch;
+// global.Headers = Headers;
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 // Only allow requests from the specific frontend. If none specified, allow all
-// app.use(
-//     cors({
-//         origin: process.env.ALLOWED_ORIGIN || '*',
-//     })
-// );
+app.use(
+    cors({
+        origin: process.env.ALLOWED_ORIGIN || '*',
+    })
+);
 
 // Allow requests from all origins
-app.use(cors());
+// app.use(cors());
 
 app.use(express.json());
 
