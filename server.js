@@ -7,6 +7,11 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Add Fetch API polyfill for Node.js
+import fetch from 'node-fetch';
+global.fetch = fetch;
+global.Headers = fetch.Headers;
+
 const app = express();
 const port = process.env.PORT || 3000;
 
