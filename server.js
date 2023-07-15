@@ -11,11 +11,14 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Only allow requests from the specific frontend. If none specified, allow all
-app.use(
-    cors({
-        origin: process.env.ALLOWED_ORIGIN || '*',
-    })
-);
+// app.use(
+//     cors({
+//         origin: process.env.ALLOWED_ORIGIN || '*',
+//     })
+// );
+
+// Allow requests from all origins
+app.use(cors());
 
 app.use(express.json());
 
