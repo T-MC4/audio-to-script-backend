@@ -2,58 +2,70 @@ import dotenv from 'dotenv';
 dotenv.config();
 const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
 
-import axios from 'axios';
 import path from 'path';
 import fs from 'fs';
-// import jq from "node-jq";
+import pkg from '@deepgram/sdk';
+const { Deepgram } = pkg;
 
+// VERSION THAT USES THE PRE-RECORDED VERSION OF DEEPGRAM
 export async function transcribeDiarizedAudio(fileNameWithExtension) {
-    try {
-        // Set file path
-        console.log('setting file path');
-        const filePath = path.join('./upload', fileNameWithExtension);
-        console.log('file path set');
+    // Set file path
+    console.log('setting file path');
+    const filePath = path.join('./upload', fileNameWithExtension);
+    console.log('file path set');
 
-        // Set API endpoint and options
-        const url =
-            'https://api.deepgram.com/v1/listen?model=phonecall&tier=nova&diarize=true&punctuate=true&smart_format=true';
-        const options = {
-            method: 'post',
-            url: url,
-            headers: {
-                Authorization: `Token ${deepgramApiKey}`,
-                'Content-Type': determineMimetype(fileNameWithExtension),
-            },
-            data: fs.createReadStream(filePath),
+    // Initialize the Deepgram SDK
+    const deepgram = new Deepgram(deepgramApiKey);
+
+    let source;
+
+    // Check whether requested file is local or remote, and prepare accordingly
+    if (filePath.startsWith('http')) {
+        // File is remote
+        source = { url: filePath };
+    } else {
+        // File is local
+        const audio = fs.readFileSync(filePath);
+        source = {
+            buffer: audio,
+            mimetype: determineMimetype(filePath),
         };
-
-        // get API response
-        const response = await axios(options);
-        const json = response.data; // Deepgram Response
-
-        // IF &smart_format=FALSE in the url, then switch the comments of the two lines below
-        // const data = transformTranscript(json);
-        const data = createTranscriptArray(json);
-
-        console.log('transcript array result:', data); // Grouping Results
-
-        // IF &utterances=true is added to the url, then remove the comments below
-        // const filter =
-        // 	'[.results.utterances[] | {"speaker": .speaker, "transcript": .transcript}]';
-        // const data = JSON.parse(await jq.run(filter, json, { input: "json" }));
-
-        // Save the transcript
-        const fileNameWithoutExtension = path.parse(fileNameWithExtension).name;
-        fs.writeFileSync(
-            `./transcripts/original-json/${fileNameWithoutExtension}.json`,
-            JSON.stringify(data, null, 2)
-        );
-
-        // Return the transcript
-        return data;
-    } catch (err) {
-        console.log(`Error with transcribeDiarizedAudio(): ${err}}`);
     }
+
+    let json;
+
+    try {
+        // Send the audio to Deepgram and get the response
+        const response = await deepgram.transcription.preRecorded(source, {
+            utterances: true,
+            model: 'phonecall',
+            tier: 'nova',
+            multichannel: true,
+            diarize: true,
+            punctuate: true,
+        });
+
+        json = response.data;
+        console.log(`API Call for ${fileNameWithExtension} was completed`);
+    } catch (err) {
+        console.error(err);
+    }
+
+    // IF &smart_format=FALSE in the url, then switch the comments of the two lines below
+    // const data = transformTranscript(json);
+    const data = createTranscriptArray(json);
+
+    console.log('transcript array result:', data); // Grouping Results
+
+    // Save the transcript
+    const fileNameWithoutExtension = path.parse(fileNameWithExtension).name;
+    fs.writeFileSync(
+        `./transcripts/original-json/${fileNameWithoutExtension}.json`,
+        JSON.stringify(data, null, 2)
+    );
+
+    // Return the transcript
+    return data;
 }
 
 // const transcript = await transcribeDiarizedAudio(
