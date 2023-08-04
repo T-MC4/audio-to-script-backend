@@ -22,12 +22,12 @@ const getTranscript = async (req, res) => {
             stream: audioRecordingStream,
             mimetype: mimetype,
         }, {
-            utterances: true,
+            smart_format: true,
+            punctuate: true,
+            paragraphs: true,
+            diarize: true,
             model: 'phonecall',
             tier: 'nova',
-            multichannel: true,
-            diarize: true,
-            punctuate: true,
         });
 
         const audioRecordingStreamForStorage = fs.createReadStream(filePath);
