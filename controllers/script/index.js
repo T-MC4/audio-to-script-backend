@@ -17,7 +17,7 @@ router.post('/generate', async (req, res) => {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
-    const transcriptSource = req.body.transcriptSource;
+    const transcriptSource = req.body.transcript_source;
     const transcript = req.body.transcript;
     const modelName = aiModelNameMap[transcriptSource];
     const promptTemplate = promptTemplates[transcriptSource];
