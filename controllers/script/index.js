@@ -2,7 +2,8 @@ import express from 'express'
 import { ChatOpenAI } from 'langchain/chat_models/openai';
 import { LLMChain } from 'langchain/chains';
 import { encoding_for_model } from 'tiktoken'
-import { testPrompt } from '../../utils/promptTemplates.js';
+import promptTemplates from './promptTemplates.js';
+import { aiModelNameMap } from './constants.js'
 
 const router = express.Router();
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -16,15 +17,18 @@ router.post('/generate', async (req, res) => {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
+    const transcriptSource = req.body.transcriptSource;
     const transcript = req.body.transcript;
+    const modelName = aiModelNameMap[transcriptSource];
+    const promptTemplate = promptTemplates[transcriptSource];
 
-    if (!transcript) {
+    if (!transcriptSource || !transcript || !modelName || !promptTemplate) {
         res.status(400);
         return res.json({ error: 'transcript-missing' })
     }
 
-    const formatedPrompt = await testPrompt.format({ transcript })
-    const encoding = encoding_for_model('gpt-4-32k-0613');
+    const formatedPrompt = await promptTemplate.format({ transcript })
+    const encoding = encoding_for_model(modelName);
     const tokens = encoding.encode(formatedPrompt);
     encoding.free();
     const promptTokens = tokens.length;
@@ -37,10 +41,10 @@ router.post('/generate', async (req, res) => {
     const leftTokens = maxModelTokens - promptTokens - tokenBuffer;
 
     const chain = new LLMChain({
-        prompt: testPrompt,
+        prompt: promptTemplate,
         llm: new ChatOpenAI({
             openAIApiKey: OPENAI_API_KEY,
-            modelName: 'gpt-4-32k-0613',
+            modelName: modelName,
             temperature: 0,
             maxTokens: leftTokens,
             streaming: true,
