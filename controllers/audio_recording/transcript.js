@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import deepgramSdk from '@deepgram/sdk';
+import supabase from '../../db/supabase.js'
 import { storage_path } from '../../utils/storage.js';
 // TODO: create singleton for env variables
 import dotenv from 'dotenv';
@@ -28,11 +29,24 @@ const getTranscript = async (req, res) => {
             diarize: true,
             punctuate: true,
         });
-        // TODO: save the file into DB
-        fs.unlink(filePath, (err) => {
-            if (err) console.log(`can't delete - ${filePath}`)
-            else console.log(`deleted - ${filePath}`)
-        });
+
+        const audioRecordingStreamForStorage = fs.createReadStream(filePath);
+        supabase
+            .storage
+            .from('audio-recordings')
+            .upload(`mag-gen/${file_name}`, audioRecordingStreamForStorage, {
+                cacheControl: '3600',
+                upsert: false, duplex: 'half'
+            })
+            .then(() => console.log(`saved to supabase - ${filePath}`))
+            .catch(err => console.log(err))
+            .then(() => {
+                fs.unlink(filePath, (err) => {
+                    if (err) console.log(`can't delete - ${filePath}`)
+                    else console.log(`deleted - ${filePath}`)
+                });
+            })
+
         return res.json({ transcript: response.results.channels[0].alternatives[0].transcript })
     } catch (err) {
         console.error(err);

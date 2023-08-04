@@ -11,6 +11,11 @@ const maxModelTokens = 32768; // Model's maximum context length
 const tokenBuffer = 1024 * 2;
 
 router.post('/generate', async (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
     const transcript = req.body.transcript;
 
     if (!transcript) {
@@ -30,11 +35,6 @@ router.post('/generate', async (req, res) => {
     }
 
     const leftTokens = maxModelTokens - promptTokens - tokenBuffer;
-
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
 
     const chain = new LLMChain({
         prompt: testPrompt,
