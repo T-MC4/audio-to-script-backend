@@ -19,3 +19,13 @@ const storage = multer.diskStorage({
 });
 
 export const upload = multer({ storage });
+
+export const checkFileExists = (path) => new Promise((resolve, reject) => {
+    fs.access(path, fs.constants.F_OK, (err) => {
+        if (err) {
+            reject();
+        } else {
+            resolve();
+        }
+    });
+})

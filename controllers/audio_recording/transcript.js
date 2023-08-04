@@ -2,7 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import deepgramSdk from '@deepgram/sdk';
 import supabase from '../../db/supabase.js'
-import { storage_path } from '../../utils/storage.js';
+import { storage_path, checkFileExists } from '../../utils/storage.js';
 // TODO: create singleton for env variables
 import dotenv from 'dotenv';
 dotenv.config();
@@ -15,6 +15,12 @@ const getTranscript = async (req, res) => {
     const mimetype = req.body.mimetype;
     if (!file_name || !mimetype) { res.status(400); res.end(); }
     const filePath = path.join(storage_path, file_name);
+    try {
+        await checkFileExists(filePath);
+    } catch (err) {
+        res.status(400); res.end();
+    }
+
     const audioRecordingStream = fs.createReadStream(filePath);
     try {
         const deepgram = new Deepgram(deepgramApiKey);
