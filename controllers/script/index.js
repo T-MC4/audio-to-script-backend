@@ -12,11 +12,6 @@ const maxModelTokens = 32768; // Model's maximum context length
 const tokenBuffer = 1024 * 2;
 
 router.post('/generate', async (req, res) => {
-    res.setHeader('Content-Type', 'text/event-stream');
-    res.setHeader('Cache-Control', 'no-cache');
-    res.setHeader('Connection', 'keep-alive');
-    res.flushHeaders();
-
     const transcriptSource = req.body.transcript_source;
     const transcript = req.body.transcript;
     const modelName = aiModelNameMap[transcriptSource];
@@ -37,6 +32,11 @@ router.post('/generate', async (req, res) => {
         res.status(400);
         return res.json({ error: 'context-limit-exceeded' })
     }
+
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
 
     const leftTokens = maxModelTokens - promptTokens - tokenBuffer;
 
