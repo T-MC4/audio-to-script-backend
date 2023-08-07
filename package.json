@@ -1,13 +1,14 @@
 {
-    "name": "audio-to-script-API-server",
+    "name": "magical-script-generator-api-server",
     "version": "1.0.0",
-    "description": "Turn audios into sales scripts",
-    "main": "server.js",
+    "description": "Generates sales scripts",
+    "main": "index.js",
     "type": "module",
     "scripts": {
-        "transcribe": "node dg-transcribe.js",
-        "script": "node audio-to-script.js",
-        "start": "NODE_ENV=production node server.js"
+        "build": "rimraf dist && npx tsc",
+        "start": "NODE_ENV=production node dist/index.js",
+        "preserve": "npm run build",
+        "serve": "concurrently \"npx tsc -w\"  \"nodemon dist/index.js\""
     },
     "dependencies": {
         "@deepgram/sdk": "^2.3.0",
@@ -19,9 +20,23 @@
         "langchain": "^0.0.95",
         "multer": "1.4.5-lts.1",
         "node-fetch": "^3.3.1",
-        "tiktoken": "^1.0.10"
+        "tiktoken": "^1.0.10",
+        "typeorm": "^0.3.17"
     },
     "engines": {
         "node": "18"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.8.13",
+        "@types/express": "^4.17.17",
+        "@types/multer": "^1.4.7",
+        "@types/node": "^18.17.3",
+        "@typescript-eslint/eslint-plugin": "^6.2.1",
+        "@typescript-eslint/parser": "^6.2.1",
+        "concurrently": "^8.2.0",
+        "eslint": "^8.46.0",
+        "nodemon": "^3.0.1",
+        "rimraf": "^5.0.1",
+        "typescript": "^5.1.6"
     }
 }

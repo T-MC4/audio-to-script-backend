@@ -1,16 +1,14 @@
 import fs from 'fs';
 import path from 'path';
+import { Request, Response } from 'express';
 import deepgramSdk from '@deepgram/sdk';
 import supabase from '../../db/supabase.js'
-import { storage_path, checkFileExists } from '../../utils/storage.js';
-// TODO: create singleton for env variables
-import dotenv from 'dotenv';
-dotenv.config();
+import { storage_path, checkFileExists } from '../../helpers/storage.js';
 
 const { Deepgram } = deepgramSdk
 const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
 
-const getTranscript = async (req, res) => {
+const getTranscript = async (req: Request, res: Response) => {
     const file_name = req.body.file_name;
     const mimetype = req.body.mimetype;
     if (!file_name || !mimetype) {
@@ -48,19 +46,26 @@ const getTranscript = async (req, res) => {
                 cacheControl: '3600',
                 upsert: false, duplex: 'half'
             })
-            .then(() => console.log(`saved to supabase - ${filePath}`))
+            .then(() => console.log(`saved to supabase - ${file_name}`))
             .catch(err => console.log(err))
             .then(() => {
                 fs.unlink(filePath, (err) => {
-                    if (err) console.log(`can't delete - ${filePath}`)
-                    else console.log(`deleted - ${filePath}`)
+                    if (err) console.log(`can't delete - ${file_name}`)
+                    else console.log(`deleted - ${file_name}`)
                 });
             })
+
+        if (!response.results) {
+            console.log(`unable to get a transcript from - ${file_name}`)
+            res.status(400);
+            return res.end();
+        }
 
         return res.json({ transcript: response.results.channels[0].alternatives[0].transcript })
     } catch (err) {
         console.error(err);
-        return res.status(500)
+        res.status(500);
+        return res.end();
     }
 }
 

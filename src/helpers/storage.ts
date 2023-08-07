@@ -2,7 +2,7 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 
-export const storage_path = './upload';
+export const storage_path = '../../upload';
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -20,7 +20,7 @@ const storage = multer.diskStorage({
 
 export const upload = multer({ storage });
 
-export const checkFileExists = (path) => new Promise((resolve, reject) => {
+export const checkFileExists = (path: string) => new Promise<void>((resolve, reject) => {
     fs.access(path, fs.constants.F_OK, (err) => {
         if (err) {
             reject();

@@ -6,3 +6,4 @@ scripts
 uploads
 .env
 audio-to-script.js
+dist

@@ -1,9 +1,9 @@
-import express from 'express'
+import express, { Request, Response } from 'express'
 import { ChatOpenAI } from 'langchain/chat_models/openai';
 import { LLMChain } from 'langchain/chains';
 import { encoding_for_model } from 'tiktoken'
 import promptTemplates from './promptTemplates.js';
-import { aiModelNameMap } from './constants.js'
+import { TranscriptSource, aiModelNameMap } from './constants.js'
 
 const router = express.Router();
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
@@ -11,7 +11,10 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const maxModelTokens = 32768; // Model's maximum context length
 const tokenBuffer = 1024 * 2;
 
-router.post('/generate', async (req, res) => {
+router.post('/generate', async (req: Request<unknown, unknown, {
+    transcript_source: TranscriptSource;
+    transcript: string
+}>, res: Response) => {
     const transcriptSource = req.body.transcript_source;
     const transcript = req.body.transcript;
     const modelName = aiModelNameMap[transcriptSource];

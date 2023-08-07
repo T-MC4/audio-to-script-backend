@@ -1,10 +1,10 @@
 import { PromptTemplate } from 'langchain/prompts';
-import { transcriptSources } from './constants.js';
+import { TranscriptSource } from './constants.js';
 
 
 // TODO: investigate if we can use just `PromptTemplate` and what if a difference in this specific case
 const tmeplates = {
-    [transcriptSources.audioToScript]: PromptTemplate.fromTemplate(`
+    [TranscriptSource.audioToScript]: PromptTemplate.fromTemplate(`
         The job that needs to be done
         
         I have a sales rep on the on phones who is doing a fantastic job. They have the best numbers on the entire team.
@@ -51,7 +51,7 @@ const tmeplates = {
         Rep:
         Below is the answer you have written based on this while adhering to all the guidelines I gave you:
     `),
-    [transcriptSources.copyPasteToScript]: PromptTemplate.fromTemplate(`
+    [TranscriptSource.copyPasteToScript]: PromptTemplate.fromTemplate(`
         Context:
         - So, I have a convo AI company named Air. Our product is an AI that can take sales and customer service calls over the phone for you.
         - All a business has to do is give us a script for our AI to follow - and then they can deploy our AI in minutes to call real leads.
@@ -349,6 +349,6 @@ const tmeplates = {
 
         Go:
     `)
-}
+} as const;
 
 export default tmeplates;
