@@ -13,12 +13,16 @@ const deepgramApiKey = process.env.DEEPGRAM_API_KEY;
 const getTranscript = async (req, res) => {
     const file_name = req.body.file_name;
     const mimetype = req.body.mimetype;
-    if (!file_name || !mimetype) { res.status(400); res.end(); }
+    if (!file_name || !mimetype) {
+        res.status(400);
+        return res.end();
+    }
     const filePath = path.join(storage_path, file_name);
     try {
         await checkFileExists(filePath);
     } catch (err) {
-        res.status(400); res.end();
+        res.status(400);
+        return res.end();
     }
 
     const audioRecordingStream = fs.createReadStream(filePath);
