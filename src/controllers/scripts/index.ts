@@ -11,7 +11,7 @@ const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const maxModelTokens = 32768; // Model's maximum context length
 const tokenBuffer = 1024 * 2;
 
-router.post('/generate', async (req: Request<unknown, unknown, {
+router.post('/scripts', async (req: Request<unknown, unknown, {
     transcript_source: TranscriptSource;
     transcript: string
 }>, res: Response) => {
@@ -41,31 +41,37 @@ router.post('/generate', async (req: Request<unknown, unknown, {
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
 
-    const leftTokens = maxModelTokens - promptTokens - tokenBuffer;
+    try {
+        const leftTokens = maxModelTokens - promptTokens - tokenBuffer;
 
-    const chain = new LLMChain({
-        prompt: promptTemplate,
-        llm: new ChatOpenAI({
-            openAIApiKey: OPENAI_API_KEY,
-            modelName: modelName,
-            temperature: 0,
-            maxTokens: leftTokens,
-            streaming: true,
-            callbacks: [
-                {
-                    handleLLMNewToken(token) {
-                        res.write(token);
+        const chain = new LLMChain({
+            prompt: promptTemplate,
+            llm: new ChatOpenAI({
+                openAIApiKey: OPENAI_API_KEY,
+                modelName: modelName,
+                temperature: 0,
+                maxTokens: leftTokens,
+                streaming: true,
+                callbacks: [
+                    {
+                        handleLLMNewToken(token) {
+                            res.write(token);
+                        },
                     },
-                },
-            ],
-        }),
-    });
+                ],
+            }),
+        });
 
-    await chain.call({
-        transcript
-    });
+        await chain.call({
+            transcript
+        });
 
-    return res.end();
+        return res.end();
+    } catch (err) {
+        console.error(err);
+        res.status(400);
+        return res.end();
+    }
 })
 
 export default router;

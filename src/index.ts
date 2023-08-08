@@ -1,19 +1,19 @@
 import './loadEnv.js'
 import express from 'express';
 import cors from 'cors';
-import AudioRecordingRoute from './controllers/audio_recording/index.js'
-import ScriptRoute from './controllers/script/index.js'
+import TranscriptsRoute from './controllers/transcripts/index.js'
+import ScriptsRoute from './controllers/scripts/index.js'
 
 const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(cors({ origin: process.env.ALLOWED_ORIGIN || '*' }));
 
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
-app.use('/api/audio_recording', AudioRecordingRoute);
+app.use('/api', TranscriptsRoute);
 
-app.use('/api/script', ScriptRoute);
+app.use('/api', ScriptsRoute);
 
 app.get('/status', (req, res) => {
     res.send('Server is up now.');

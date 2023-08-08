@@ -6,6 +6,7 @@ declare global {
             SUPABASE_URL: string;
             SUPABASE_KEY: string;
             PORT: string | undefined;
+            SUPABASE_BUCKET_NAME: string;
         }
     }
 }
