@@ -1,12 +1,6 @@
 export enum TranscriptSource {
-    audioToScript = 'audio-to-script',
-    copyPasteToScript = 'copy-paste-to-script'
-}
-
-export enum Flow {
-    salesAdvanced = 'sales-advanced',
-    customerServiceAdvanced = 'customer-service-advanced',
-    standardScriptOnly = 'standard-script-only',
+    audioToScript = 'file-upload',
+    copyPasteToScript = 'paste-script'
 }
 
 export const aiModelNameMap = {
